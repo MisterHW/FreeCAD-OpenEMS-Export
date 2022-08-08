@@ -1787,9 +1787,11 @@ DumpFF2VTK([Sim_Path '/3D_Pattern_CPLH.vtk'],directivity_CPLH,thetaRange,phiRang
 				pass
 			elif (currSetting.getType() == 'User Defined'):
 				#UNIT FOR MESH										
-				genScript += "meshUnit = " + currSetting.getUnitAsScriptLine() + "; % all length in mm\n"
-				genScript += "mesh = " + currSetting.getXYZ() + ";\n"
-				genScript += "CSX = DefineRectGrid(CSX, " + currSetting.getUnitAsScriptLine() + ", mesh);\n"
+				genScript += "user_meshUnit = " + currSetting.getUnitAsScriptLine() + "; % all lengths ought to be in mm\n"
+				genScript += "user_mesh = " + currSetting.getXYZ() + ";\n"
+				genScript += "mesh.x = [mesh.x user_mesh.x*(user_meshUnit/0.001)];\n"
+				genScript += "mesh.y = [mesh.y user_mesh.y*(user_meshUnit/0.001)];\n"
+				genScript += "mesh.z = [mesh.z user_mesh.z*(user_meshUnit/0.001)];\n"
 				pass
 
 		return genScript
@@ -2350,7 +2352,7 @@ DumpFF2VTK([Sim_Path '/3D_Pattern_CPLH.vtk'],directivity_CPLH,thetaRange,phiRang
 										if (currSetting.zenabled):
 											#genScript += "mesh.z = [mesh.z (" + str(bbCoords.ZMin) + ":" + str(currSetting.getXYZ()['z']) + ":" + str(bbCoords.ZMax) + ") + " + str(offsetZ) + "];\n"
 											genScript += "mesh.z = [mesh.z (" + str(zmin) + ":" + str(currSetting.getXYZ()['z']) + ":" + str(zmax) + ") + " + str(offsetZ) + "];\n"
-										genScript += "CSX = DefineRectGrid(CSX, " + currSetting.getUnitAsScriptLine() + ", mesh);\n"
+										# genScript += "CSX = DefineRectGrid(CSX, " + currSetting.getUnitAsScriptLine() + ", mesh);\n"
 										pass
 									elif (currSetting.getType() == 'Fixed Count'):
 										#if just one line is defined then is place in middle										
@@ -2378,13 +2380,13 @@ DumpFF2VTK([Sim_Path '/3D_Pattern_CPLH.vtk'],directivity_CPLH,thetaRange,phiRang
 												#genScript += "mesh.z = [mesh.z " + str((bbCoords.ZMin + bbCoords.ZMax)/2) + " + " + str(offsetZ) + "];\n"
 												genScript += "mesh.z = [mesh.z " + str((zmin+zmax)/2) + " + " + str(offsetZ) + "];\n"
 
-										genScript += "CSX = DefineRectGrid(CSX, " + currSetting.getUnitAsScriptLine() + ", mesh);\n"
+										# genScript += "CSX = DefineRectGrid(CSX, " + currSetting.getUnitAsScriptLine() + ", mesh);\n"
 										pass
 									elif (currSetting.getType() == 'User Defined'):
 										#UNIT FOR MESH										
-										genScript += "meshUnit = " + currSetting.getUnitAsScriptLine() + "; % all length in mm\n"
-										genScript += "mesh = " + currSetting.getXYZ() + ";\n"
-										genScript += "CSX = DefineRectGrid(CSX, " + currSetting.getUnitAsScriptLine() + ", mesh);\n"
+										genScript += "user_meshUnit = " + currSetting.getUnitAsScriptLine() + "; % all length in mm\n"
+										genScript += "user_mesh = " + currSetting.getXYZ() + ";\n"
+										# genScript += "CSX = DefineRectGrid(CSX, " + currSetting.getUnitAsScriptLine() + ", user_mesh);\n"
 										pass
 
 							pass
@@ -2636,7 +2638,7 @@ DumpFF2VTK([Sim_Path '/3D_Pattern_CPLH.vtk'],directivity_CPLH,thetaRange,phiRang
 				print("\n")
 
 		print("======================== REPORT END ========================\n")
-
+		
 		#   _____ _____  _____ _____       _____  _____  _____ ____  _____  _____ _______ _____ ______  _____ 
 		#  / ____|  __ \|_   _|  __ \     |  __ \|  __ \|_   _/ __ \|  __ \|_   _|__   __|_   _|  ____|/ ____|
 		# | |  __| |__) | | | | |  | |    | |__) | |__) | | || |  | | |__) | | |    | |    | | | |__  | (___  
@@ -2644,16 +2646,46 @@ DumpFF2VTK([Sim_Path '/3D_Pattern_CPLH.vtk'],directivity_CPLH,thetaRange,phiRang
 		# | |__| | | \ \ _| |_| |__| |    | |    | | \ \ _| || |__| | | \ \ _| |_   | |   _| |_| |____ ____) |
 		#  \_____|_|  \_\_____|_____/     |_|    |_|  \_\_____\____/|_|  \_\_____|  |_|  |_____|______|_____/ 
 		#                                                                                                     
-
+		
+		# genScript += "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+		# genScript += "% GRID PRIORITIES GENERATION\n"
+		# genScript += "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+		# meshPrioritiesCount = self.form.meshPriorityTreeView.topLevelItemCount()
+		# for k in reversed(range(meshPrioritiesCount)):
+		# 	meshPriorityIdentifier = self.form.meshPriorityTreeView.topLevelItem(k).text(0)
+		# 	print("GRID PRIORITY SCRIPT GENERATION " + meshPriorityIdentifier)
+		# 	genScript += self.getMeshPriorityScriptLines(meshPriorityIdentifier)
+			
 		genScript += "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
-		genScript += "% GRID PRIORITIES GENERATION\n"
+		genScript += "% MESH CLEANUP - FIND / REMOVE OVERLAPPING LINES\n"
 		genScript += "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
-
-		meshPrioritiesCount = self.form.meshPriorityTreeView.topLevelItemCount()
-		for k in reversed(range(meshPrioritiesCount)):
-			meshPriorityIdentifier = self.form.meshPriorityTreeView.topLevelItem(k).text(0)
-			print("GRID PRIORITY SCRIPT GENERATION " + meshPriorityIdentifier)
-			genScript += self.getMeshPriorityScriptLines(meshPriorityIdentifier)
+		genScript += "mesh.x = sort(mesh.x);\n"
+		genScript += "mesh.y = sort(mesh.y);\n"
+		genScript += "mesh.z = sort(mesh.z);\n"
+		genScript += "disp([\"mesh min spacing x : \" num2str(min(diff(mesh.x)))]);\n"
+		genScript += "disp([\"mesh min spacing y : \" num2str(min(diff(mesh.y)))]);\n"
+		genScript += "disp([\"mesh min spacing z : \" num2str(min(diff(mesh.z)))]);\n"
+		genScript += "\n"
+		genScript += "minimumMeshSpacingX = "+ str(self.form.genParamMinGridSpacingX.value()) +";\n"
+		genScript += "minimumMeshSpacingY = "+ str(self.form.genParamMinGridSpacingY.value()) +";\n"
+		genScript += "minimumMeshSpacingZ = "+ str(self.form.genParamMinGridSpacingZ.value()) +";\n"
+		genScript += "if ((min(diff(mesh.x)) <= minimumMeshSpacingX) ||\n"
+		genScript += "	  (min(diff(mesh.y)) <= minimumMeshSpacingY) ||\n"
+		genScript += "	  (min(diff(mesh.z)) <= minimumMeshSpacingZ))\n"
+		genScript += "	if exist('uniquetol')\n"
+		genScript += "  	disp(\"Minimum mesh spacing violated, removing duplicate entries.\");\n"
+		genScript += "  	mesh.x = uniquetol(mesh.x, minimumMeshSpacingX);\n"
+		genScript += "  	mesh.y = uniquetol(mesh.y, minimumMeshSpacingY);\n"
+		genScript += "  	mesh.z = uniquetol(mesh.z, minimumMeshSpacingZ);\n"
+		genScript += "  	disp([\"new mesh min spacing x : \" num2str(min(diff(mesh.x)))]);\n"
+		genScript += "  	disp([\"new mesh min spacing y : \" num2str(min(diff(mesh.y)))]);\n"
+		genScript += "  	disp([\"new mesh min spacing z : \" num2str(min(diff(mesh.z)))]);\n"
+		genScript += "	else\n"
+		genScript += "		disp(\"Minimum mesh spacing violated. Provide uniquetol.m or correct the grid defintions.\");\n"
+		genScript += "	end\n"
+		genScript += "end\n"
+		genScript += "\n"
+		genScript += "CSX = DefineRectGrid(CSX, 0.001, mesh); % (in mm)\n"
 
 		#  _   _ ______ ___  ______ ______    _____ _____  _____ _____  _      _____ _   _ ______  _____ 
 		# | \ | |  ____|__ \|  ____|  ____|  / ____|  __ \|_   _|  __ \| |    |_   _| \ | |  ____|/ ____|
