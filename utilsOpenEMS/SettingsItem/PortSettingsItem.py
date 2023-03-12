@@ -1,4 +1,4 @@
-from .  SettingsItem import SettingsItem
+from .SettingsItem import SettingsItem
 
 # Port settings
 #	There are just few types of ports defined in OpenEMS:
