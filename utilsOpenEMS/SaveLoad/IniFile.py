@@ -5,6 +5,8 @@ import json
 from PySide import QtGui, QtCore
 import FreeCAD as App
 
+from utilsOpenEMS.GuiHelpers.GuiSignals import GuiSignals
+
 from utilsOpenEMS.GuiHelpers.GuiHelpers import GuiHelpers
 from utilsOpenEMS.GuiHelpers.FreeCADHelpers import FreeCADHelpers
 
@@ -21,11 +23,12 @@ from utilsOpenEMS.GlobalFunctions.GlobalFunctions import _bool, _r
 
 class IniFile:
 
-    def __init__(self, form, statusBar = None):
+    def __init__(self, form, statusBar = None, guiSignals = None):
         self.form = form
         self.statusBar = statusBar
         self.freeCADHelpers = FreeCADHelpers()
         self.guiHelpers = GuiHelpers(self.form, statusBar = self.statusBar)
+        self.guiSignals = guiSignals
 
     def writeToFile(self):
         freeCadFileDir = os.path.dirname(App.ActiveDocument.FileName)
@@ -81,10 +84,23 @@ class IniFile:
 
             settings.beginGroup("MATERIAL-" + materialList[k].getName())
             settings.setValue("type", materialList[k].type)
-            settings.setValue("material_epsilon", materialList[k].constants['epsilon'])
-            settings.setValue("material_mue", materialList[k].constants['mue'])
-            settings.setValue("material_kappa", materialList[k].constants['kappa'])
-            settings.setValue("material_sigma", materialList[k].constants['sigma'])
+
+            if (materialList[k].type == "userdefined"):
+                settings.setValue("material_epsilon", materialList[k].constants['epsilon'])
+                settings.setValue("material_mue", materialList[k].constants['mue'])
+                settings.setValue("material_kappa", materialList[k].constants['kappa'])
+                settings.setValue("material_sigma", materialList[k].constants['sigma'])
+            elif (materialList[k].type == "conducting sheet"):
+                try:
+                    settings.setValue("conductingSheetThicknessValue", materialList[k].constants['conductingSheetThicknessValue'])
+                    settings.setValue("conductingSheetThicknessUnits", materialList[k].constants['conductingSheetThicknessUnits'])
+                    settings.setValue("conductingSheetConductivity", materialList[k].constants['conductingSheetConductivity'])
+                except Exception as e:
+                    settings.setValue("conductingSheetThicknessValue", 40.00)
+                    settings.setValue("conductingSheetThicknessUnits", "um")
+                    settings.setValue("conductingSheetConductivity", 50e6)
+                    print(f"IniFile.py > write(), ERROR, set default values for conductingSheetThicknessValue, conductingSheetThicknessUnits\n{e}")
+
             settings.endGroup()
 
         # SAVE GRID SETTINGS
@@ -138,6 +154,16 @@ class IniFile:
                 settings.setValue("modeName", portList[k].modeName)
                 settings.setValue("polarizationAngle", portList[k].polarizationAngle)
                 settings.setValue("excitationAmplitude", portList[k].excitationAmplitude)
+            elif (portList[k].type == "microstrip"):
+                try:
+                    settings.setValue("mslMaterial", portList[k].mslMaterial)
+                    settings.setValue("mslPropagation", portList[k].mslPropagation)
+                    settings.setValue("mslFeedShiftValue", portList[k].mslFeedShiftValue)
+                    settings.setValue("mslFeedShiftUnits", portList[k].mslFeedShiftUnits)
+                    settings.setValue("mslMeasPlaneShiftValue", portList[k].mslMeasPlaneShiftValue)
+                    settings.setValue("mslMeasPlaneShiftUnits", portList[k].mslMeasPlaneShiftUnits)
+                except Exception as e:
+                    print(f"{__file__} > write() microstrip material ERROR: {e}")
 
             settings.endGroup()
 
@@ -169,6 +195,11 @@ class IniFile:
         simulationSettings.params['min_gridspacing_y'] = self.form.genParamMinGridSpacingY.value()
         simulationSettings.params['min_gridspacing_z'] = self.form.genParamMinGridSpacingZ.value()
 
+        simulationSettings.params['outputScriptType'] = 'octave'
+        if self.form.radioButton_pythonType.isChecked():
+            simulationSettings.params['outputScriptType'] = 'python'
+
+        # write parameters frp, above into JSON
         settings.beginGroup("SIMULATION-" + simulationSettings.name)
         settings.setValue("name", simulationSettings.name)
         settings.setValue("params", json.dumps(simulationSettings.params))
@@ -346,6 +377,18 @@ class IniFile:
                     categorySettings.modeName = settings.value('modeName')
                     categorySettings.polarizationAngle = settings.value('polarizationAngle')
                     categorySettings.excitationAmplitude = settings.value('excitationAmplitude')
+                elif (categorySettings.type == "microstrip"):
+                    #this is in try block to have backward compatibility
+                    try:
+                        categorySettings.mslMaterial = settings.value('mslMaterial')
+                        categorySettings.mslPropagation = settings.value('mslPropagation')
+                        categorySettings.mslFeedShiftValue = float(settings.value('mslFeedShiftValue'))
+                        categorySettings.mslFeedShiftUnits = settings.value('mslFeedShiftUnits')
+                        categorySettings.mslMeasPlaneShiftValue = float(settings.value('mslMeasPlaneShiftValue'))
+                        categorySettings.mslMeasPlaneShiftUnits = settings.value('mslMeasPlaneShiftUnits')
+                    except Exception as e:
+                        print(f"There was error during reading microstrip port settings: {e}")
+
                 elif (categorySettings.type == "nf2ff box"):
                     #
                     #	Add nf2ff box item into list of possible object in postprocessing tab
@@ -365,6 +408,15 @@ class IniFile:
                 categorySettings.constants['mue'] = settings.value('material_mue')
                 categorySettings.constants['kappa'] = settings.value('material_kappa')
                 categorySettings.constants['sigma'] = settings.value('material_sigma')
+
+                try:
+                    categorySettings.constants['conductingSheetThicknessValue'] = settings.value('conductingSheetThicknessValue')
+                    categorySettings.constants['conductingSheetThicknessUnits'] = settings.value('conductingSheetThicknessUnits')
+                    categorySettings.constants['conductingSheetConductivity'] = settings.value('conductingSheetConductivity')
+                except:
+                    print(f"There was error during loading conductive sheet material params for '{itemName}'")
+                    pass
+
                 settings.endGroup()
 
             elif (re.compile("SIMULATION").search(settingsGroup)):
@@ -411,6 +463,12 @@ class IniFile:
                     self.form.genParamMinGridSpacingX.setValue(simulationSettings.params['min_gridspacing_x'])
                     self.form.genParamMinGridSpacingY.setValue(simulationSettings.params['min_gridspacing_y'])
                     self.form.genParamMinGridSpacingZ.setValue(simulationSettings.params['min_gridspacing_z'])
+
+                    self.form.radioButton_octaveType.setChecked(True)                                                       # by default octave type is checked
+                    self.form.radioButton_octaveType.setChecked(simulationSettings.params['outputScriptType'] == 'octave')
+                    if simulationSettings.params['outputScriptType'] == 'python':
+                        self.form.radioButton_pythonType.setChecked(simulationSettings.params['outputScriptType'] == 'python')
+                        self.form.radioButton_pythonType.clicked.emit()
                 except:
                     pass
 
@@ -659,6 +717,15 @@ class IniFile:
                 self.guiHelpers.removePriorityName(objName)
 
             self.guiHelpers.displayMessage(f"Fail to load:\n{missingObjects}")
+
+        #
+        # Send all appropriate signals to GUI to update all needed items.
+        #       Like materials for microstrip port combobox.
+        #
+        if (self.guiSignals):
+            self.guiSignals.materialsChanged.emit("update")
+        else:
+            print(f"{__file__} > read(): no guiSignals defined, probably not passed into constructor, some UI things doesn't have to be populated")
 
         #
         #   Final message from which file were settings loaded
