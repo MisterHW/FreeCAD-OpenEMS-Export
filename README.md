@@ -1,3 +1,12 @@
+> [!IMPORTANT]
+> Due to the project owner \[Lubomir Jagos\] losing access to the source repository, future development will happen under https://github.com/LubomirJagos42/FreeCAD-OpenEMS-Export.
+> For more information also see https://github.com/LubomirJagos/FreeCAD-OpenEMS-Export/issues/42 in the old repository. Please open any issues and PRs in the new repo.
+
+> [!NOTE]
+> This repository contains unmerged code for mesh validation and repair under https://github.com/MisterHW/FreeCAD-OpenEMS-Export/tree/mesh_experimentation.
+> We welcome thoughts, suggestions and contributions to improve the ease of use and quality of generated regular mesh definitions.
+> As of 2024-11-3, https://github.com/MisterHW/FreeCAD-OpenEMS-Export/ will be archived.  
+
 FreeCAD-OpenEMS-Export
 ======================
 Simple GUI plugin for FreeCAD to export current model for EM simulation in OpenEMS
